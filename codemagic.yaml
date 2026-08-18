@@ -1,0 +1,25 @@
+workflows:
+  jarvis-android-debug:
+    name: JARVIS Android Debug APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - jarvis_secrets   # add GEMINI_API_KEY here in Codemagic UI
+      java: 17
+    scripts:
+      - name: Write .env file
+        script: |
+          echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
+      - name: Fix debug signing config
+        script: |
+          sed -i 's/debug { signingConfig = signingConfigs.getByName("debugConfig") }/debug { }/' app/build.gradle.kts
+      - name: Set execute permission for gradlew
+        script: chmod +x ./gradlew
+      - name: Build debug APK
+        script: ./gradlew assembleDebug
+    artifacts:
+      - app/build/outputs/**/*.apk
+    publishing:
+      email:
+        recipients: []
