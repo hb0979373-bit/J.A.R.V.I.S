@@ -13,7 +13,7 @@ workflows:
           echo "GEMINI_API_KEY=$GEMINI_API_KEY" > .env
       - name: Fix debug signing config
         script: |
-          sed -i 's/debug { signingConfig = signingConfigs.getByName("debugConfig") }/debug { }/' app/build.gradle.kts
+          sed -i '' 's/debug { signingConfig = signingConfigs.getByName("debugConfig") }/debug { }/' app/build.gradle.kts
       - name: Set execute permission for gradlew
         script: chmod +x ./gradlew
       - name: Build debug APK
