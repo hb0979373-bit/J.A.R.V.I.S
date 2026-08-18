@@ -14,6 +14,9 @@ workflows:
       - name: Fix debug signing config
         script: |
           sed -i '' 's/debug { signingConfig = signingConfigs.getByName("debugConfig") }/debug { }/' app/build.gradle.kts
+      - name: Generate gradle wrapper
+        script: |
+          gradle wrapper --gradle-version 9.1.1
       - name: Set execute permission for gradlew
         script: chmod +x ./gradlew
       - name: Build debug APK
