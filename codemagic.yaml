@@ -20,6 +20,3 @@ workflows:
         script: ./gradlew assembleDebug
     artifacts:
       - app/build/outputs/**/*.apk
-    publishing:
-      email:
-        recipients: []
