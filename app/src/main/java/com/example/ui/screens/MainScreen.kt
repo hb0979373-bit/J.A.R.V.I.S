@@ -99,6 +99,7 @@ fun MainScreen(
     val statusNotice by viewModel.statusNotice.collectAsStateWithLifecycle()
     val batteryPercentage by viewModel.batteryPercentage.collectAsStateWithLifecycle()
     val isApiKeyConfigured by viewModel.isApiKeyConfigured.collectAsStateWithLifecycle()
+    val isWakeWordActive by viewModel.isWakeWordActive.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val pendingAction by viewModel.pendingConfirmationAction.collectAsStateWithLifecycle()
 
@@ -136,6 +137,8 @@ fun MainScreen(
                 proactiveMode = settings.proactiveMode,
                 focusModeEnabled = settings.focusModeEnabled,
                 isApiKeyConfigured = isApiKeyConfigured,
+                isBackgroundModeActive = isWakeWordActive,
+                onToggleBackgroundMode = { viewModel.toggleWakeWordService(!isWakeWordActive) },
                 onOpenSettings = { isDrawerOpen = true }
             )
         }
@@ -212,6 +215,12 @@ fun MainScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        QuickCommandChip(
+                            label = if (isWakeWordActive) "BG Mode: ON" else "BG Mode: OFF",
+                            isActive = isWakeWordActive
+                        ) {
+                            viewModel.toggleWakeWordService(!isWakeWordActive)
+                        }
                         QuickCommandChip(label = "Daily Briefing") {
                             viewModel.startListening()
                         }
@@ -224,7 +233,10 @@ fun MainScreen(
                         QuickCommandChip(label = "Tasks & Alarms") {
                             onNavigateToTasks()
                         }
-                        QuickCommandChip(label = if (settings.focusModeEnabled) "End Focus" else "Focus Mode") {
+                        QuickCommandChip(
+                            label = if (settings.focusModeEnabled) "End Focus" else "Focus Mode",
+                            isActive = settings.focusModeEnabled
+                        ) {
                             viewModel.toggleFocusMode(!settings.focusModeEnabled)
                         }
                     }
@@ -338,21 +350,22 @@ fun MainScreen(
 @Composable
 private fun QuickCommandChip(
     label: String,
+    isActive: Boolean = false,
     onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(ObsidianSurface)
-            .border(1.dp, ObsidianCardBorder, RoundedCornerShape(20.dp))
+            .background(if (isActive) JarvisCyan.copy(alpha = 0.2f) else ObsidianSurface)
+            .border(1.dp, if (isActive) JarvisCyan else ObsidianCardBorder, RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
         Text(
             text = label,
-            color = JarvisCyan,
+            color = if (isActive) JarvisCyan else TextPrimary,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
             fontFamily = FontFamily.Monospace
         )
     }

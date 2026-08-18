@@ -1,6 +1,10 @@
 package com.example.device
 
 import android.app.SearchManager
+import android.app.admin.DevicePolicyManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -17,6 +21,8 @@ import android.os.StatFs
 import android.provider.AlarmClock
 import android.provider.MediaStore
 import android.provider.Settings
+import com.example.services.JarvisAccessibilityService
+import com.example.services.JarvisDeviceAdminReceiver
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -351,6 +357,154 @@ class DeviceActionExecutor(private val context: Context) {
             ActionResult.Success("Alarm registered for $formattedTime with label '$message'.")
         } catch (e: Exception) {
             ActionResult.Failure("Failed to schedule alarm: ${e.localizedMessage}")
+        }
+    }
+
+    fun lockScreen(): ActionResult {
+        // 1. Check if Accessibility service can lock the screen (Android 9+)
+        if (JarvisAccessibilityService.isRunning) {
+            val locked = JarvisAccessibilityService.lockScreen()
+            if (locked) {
+                return ActionResult.Success("Screen locked securely via Accessibility Neural Link.")
+            }
+        }
+
+        // 2. Check Device Policy Manager
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as? DevicePolicyManager
+        val adminComponent = ComponentName(context, JarvisDeviceAdminReceiver::class.java)
+        if (dpm != null && dpm.isAdminActive(adminComponent)) {
+            return try {
+                dpm.lockNow()
+                ActionResult.Success("Screen locked securely via Device Administrator protocol.")
+            } catch (e: Exception) {
+                ActionResult.Failure("Failed to lock screen: ${e.localizedMessage}")
+            }
+        }
+
+        // 3. Neither granted -> Guide user to activate either Accessibility or Device Admin
+        return try {
+            val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+                putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Allow J.A.R.V.I.S to secure and lock the screen on voice command.")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            ActionResult.HandledWithIntent(
+                "Screen lock requires Device Administrator or Accessibility permission. Opening setup screen...",
+                "Device Administrator Setup"
+            )
+        } catch (e: Exception) {
+            openAccessibilitySettings()
+            ActionResult.HandledWithIntent(
+                "Opening Accessibility settings to enable screen lock control.",
+                "Accessibility Settings"
+            )
+        }
+    }
+
+    fun toggleBluetooth(enable: Boolean): ActionResult {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: @Suppress("DEPRECATION") BluetoothAdapter.getDefaultAdapter()
+
+        if (adapter == null) {
+            return ActionResult.Failure("Bluetooth hardware is not available on this device.")
+        }
+
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Modern Android restricts programmatic toggling without user prompt -> open Bluetooth panel/settings
+                openBluetoothSettings()
+                val targetState = if (enable) "enable" else "disable"
+                ActionResult.HandledWithIntent("Opening Bluetooth settings to $targetState Bluetooth.", "Bluetooth Settings")
+            } else {
+                @Suppress("DEPRECATION")
+                val isSuccess = if (enable) adapter.enable() else adapter.disable()
+                if (isSuccess) {
+                    val msg = if (enable) "Bluetooth enabled." else "Bluetooth disabled."
+                    ActionResult.Success(msg)
+                } else {
+                    openBluetoothSettings()
+                    ActionResult.HandledWithIntent("Opening Bluetooth settings.", "Bluetooth Settings")
+                }
+            }
+        } catch (e: Exception) {
+            openBluetoothSettings()
+            ActionResult.HandledWithIntent("Opening Bluetooth settings.", "Bluetooth Settings")
+        }
+    }
+
+    fun getBluetoothStatus(): String {
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+        val adapter = bluetoothManager?.adapter ?: @Suppress("DEPRECATION") BluetoothAdapter.getDefaultAdapter()
+        if (adapter == null) {
+            return "Bluetooth hardware is not available on this device."
+        }
+        return if (adapter.isEnabled) {
+            "Bluetooth is currently powered on and active."
+        } else {
+            "Bluetooth is currently switched off."
+        }
+    }
+
+    fun toggleWifi(enable: Boolean): ActionResult {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val panelIntent = Intent(Settings.Panel.ACTION_WIFI).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(panelIntent)
+                val targetState = if (enable) "turn on" else "turn off"
+                ActionResult.HandledWithIntent("Opening Wi-Fi control panel to $targetState Wi-Fi.", "Wi-Fi Panel")
+            } catch (e: Exception) {
+                openWifiSettings()
+            }
+        } else {
+            openWifiSettings()
+        }
+    }
+
+    fun toggleMobileData(enable: Boolean): ActionResult {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                val panelIntent = Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(panelIntent)
+                ActionResult.HandledWithIntent("Opening Internet Connectivity panel.", "Connectivity Panel")
+            } catch (e: Exception) {
+                openSettings(Settings.ACTION_DATA_ROAMING_SETTINGS, "Mobile Network Settings")
+            }
+        } else {
+            openSettings(Settings.ACTION_DATA_ROAMING_SETTINGS, "Mobile Network Settings")
+        }
+    }
+
+    fun adjustBrightness(increase: Boolean): ActionResult {
+        val canWrite = Settings.System.canWrite(context)
+        if (canWrite) {
+            return try {
+                val cr = context.contentResolver
+                val currentBrightness = Settings.System.getInt(cr, Settings.System.SCREEN_BRIGHTNESS, 128)
+                val delta = if (increase) 50 else -50
+                val newBrightness = (currentBrightness + delta).coerceIn(10, 255)
+                Settings.System.putInt(cr, Settings.System.SCREEN_BRIGHTNESS, newBrightness)
+                val pct = (newBrightness * 100 / 255f).toInt()
+                ActionResult.Success("Display brightness adjusted to $pct%.")
+            } catch (e: Exception) {
+                openDisplaySettings()
+                ActionResult.HandledWithIntent("Opening Display settings to adjust brightness.", "Display Settings")
+            }
+        } else {
+            return try {
+                val intent = Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+                ActionResult.HandledWithIntent("Adjusting brightness requires Modify System Settings permission. Opening permission page...", "System Settings Permission")
+            } catch (e: Exception) {
+                openDisplaySettings()
+            }
         }
     }
 

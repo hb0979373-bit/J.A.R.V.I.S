@@ -11,6 +11,7 @@ import com.example.device.DeviceActionExecutor
 import com.example.device.PendingCommunicationAction
 import com.example.services.JarvisAccessibilityService
 import com.example.services.JarvisNotificationListenerService
+import com.example.voice.wakeword.JarvisWakeWordEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
@@ -52,9 +53,9 @@ class CommandRouter(
         rawCommand: String,
         conversationHistory: List<ChatMessage> = emptyList()
     ): RouteResult = withContext(Dispatchers.IO) {
-        val trimmed = rawCommand.trim()
+        val trimmed = JarvisWakeWordEngine.stripWakeWordPrefix(rawCommand.trim())
         if (trimmed.isBlank()) {
-            return@withContext RouteResult.Error("No command provided.")
+            return@withContext RouteResult.Error("Standing by, Sir.")
         }
 
         // Multi-step command handling (e.g. "open youtube and lower the volume")
@@ -127,7 +128,7 @@ class CommandRouter(
             "torch", "focus mode", "study mode", "task", "reminder", "alarm", "timer",
             "time", "date", "briefing", "remember that", "what do you remember", "who are you",
             "screen", "notification", "call", "phone", "message", "sms", "storage", "specs", "device info",
-            "aawaz", "baje", "karo", "lagao", "padho"
+            "lock", "bluetooth", "wifi", "wi-fi", "brightness", "mobile data", "data", "aawaz", "baje", "karo", "lagao", "padho"
         )
         return localTriggers.any { lower.contains(it) }
     }
@@ -139,7 +140,7 @@ class CommandRouter(
         if (lower == "who are you" || lower == "what is your name" || lower == "introduce yourself" || lower == "aap kaun ho" || lower == "tum kaun ho") {
             return RouteResult.SpokenResponse("I am J.A.R.V.I.S, Just A Rather Very Intelligent System. Your on-device neural assistant standing by for instructions.")
         }
-        if (lower == "status" || lower == "system status" || lower == "report" || lower == "system report") {
+        if (lower == "status" || lower == "system status" || lower == "report" || lower == "system report" || lower == "kya haal hai" || lower == "all systems") {
             val battery = deviceExecutor.getBatteryStatus()
             val storage = deviceExecutor.getStorageStats()
             val net = deviceExecutor.getNetworkStatus()
@@ -148,17 +149,113 @@ class CommandRouter(
         }
 
         // 2. Battery & Power
-        if (lower.contains("battery") || lower.contains("power level") || lower.contains("charge percentage") || lower.contains("battery kitni hai")) {
+        if (lower.contains("battery") || lower.contains("power level") || lower.contains("charge percentage") || lower.contains("battery kitni hai") || lower.contains("battery batao")) {
             val batteryText = deviceExecutor.getBatteryStatus()
             return RouteResult.SpokenResponse(batteryText)
         }
 
-        // 3. Storage & Device Hardware Specs
-        if (lower.contains("storage") || lower.contains("disk space") || lower.contains("memory space") || lower.contains("storage kitni bachi")) {
+        // 3. Screen Lock
+        if (lower == "lock phone" || lower == "lock the phone" || lower == "lock screen" || lower == "lock my screen" ||
+            lower == "lock device" || lower == "screen lock" || lower == "turn off screen" || lower == "screen off" ||
+            lower.contains("phone lock karo") || lower.contains("screen band karo") || lower.contains("screen lock karo")) {
+            val res = deviceExecutor.lockScreen()
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Locking screen."
+            }
+            return RouteResult.SpokenResponse(msg, isSuccess = res !is ActionResult.Failure)
+        }
+
+        // 4. Bluetooth Controls & Status
+        if (lower.contains("turn on bluetooth") || lower.contains("enable bluetooth") || lower == "bluetooth on" || lower.contains("bluetooth chalu karo") || lower.contains("bluetooth chalao")) {
+            val res = deviceExecutor.toggleBluetooth(true)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Enabling Bluetooth."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+        if (lower.contains("turn off bluetooth") || lower.contains("disable bluetooth") || lower == "bluetooth off" || lower.contains("bluetooth band karo")) {
+            val res = deviceExecutor.toggleBluetooth(false)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Disabling Bluetooth."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+        if (lower.contains("bluetooth status") || lower == "is bluetooth on" || lower.contains("bluetooth chal raha hai kya")) {
+            val status = deviceExecutor.getBluetoothStatus()
+            return RouteResult.SpokenResponse(status)
+        }
+
+        // 5. Wi-Fi Controls & Status
+        if (lower.contains("turn on wifi") || lower.contains("enable wifi") || lower == "wifi on" || lower.contains("wifi chalu karo") || lower.contains("wifi on karo")) {
+            val res = deviceExecutor.toggleWifi(true)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Opening Wi-Fi settings."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+        if (lower.contains("turn off wifi") || lower.contains("disable wifi") || lower == "wifi off" || lower.contains("wifi band karo")) {
+            val res = deviceExecutor.toggleWifi(false)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Opening Wi-Fi settings."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+
+        // 6. Mobile Data Controls
+        if (lower.contains("mobile data") || lower.contains("cellular data") || lower.contains("net chalu karo") || lower.contains("net band karo") || lower.contains("data setting")) {
+            val res = deviceExecutor.toggleMobileData(true)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Opening Mobile Data settings."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+
+        // 7. Brightness Controls
+        if (lower.contains("increase brightness") || lower.contains("raise brightness") || lower.contains("more brightness") || lower.contains("brighter") || lower.contains("brightness badhao")) {
+            val res = deviceExecutor.adjustBrightness(increase = true)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Adjusting display brightness."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+        if (lower.contains("decrease brightness") || lower.contains("lower brightness") || lower.contains("dim brightness") || lower.contains("dim screen") || lower.contains("brightness kam karo")) {
+            val res = deviceExecutor.adjustBrightness(increase = false)
+            val msg = when (res) {
+                is ActionResult.Success -> res.message
+                is ActionResult.HandledWithIntent -> res.message
+                is ActionResult.Failure -> res.reason
+                else -> "Adjusting display brightness."
+            }
+            return RouteResult.SpokenResponse(msg)
+        }
+
+        // 8. Storage & Device Hardware Specs
+        if (lower.contains("storage") || lower.contains("disk space") || lower.contains("memory space") || lower.contains("storage kitni bachi") || lower.contains("storage batao")) {
             val storage = deviceExecutor.getStorageStats()
             return RouteResult.SpokenResponse("Internal storage: ${storage.freeGb} GB available out of ${storage.totalGb} GB (${storage.usedPercent}% used).")
         }
-        if (lower.contains("device info") || lower.contains("device specs") || lower.contains("hardware info") || lower.contains("system info") || lower.contains("phone details")) {
+        if (lower.contains("device info") || lower.contains("device specs") || lower.contains("hardware info") || lower.contains("system info") || lower.contains("phone details") || lower.contains("phone details batao")) {
             val specs = deviceExecutor.getDeviceSpecs()
             return RouteResult.SpokenResponse("Device: ${specs.manufacturer} ${specs.model} running Android ${specs.androidVersion} (API ${specs.sdkInt}). Architecture: ${specs.supportedAbis}.")
         }
@@ -167,7 +264,7 @@ class CommandRouter(
             return RouteResult.SpokenResponse(net)
         }
 
-        // 4. Volume & Audio Control
+        // 9. Volume & Audio Control
         if (lower.contains("volume up") || lower.contains("raise volume") || lower.contains("increase volume") || lower.contains("louder") || lower.contains("aawaz badhao")) {
             val res = deviceExecutor.adjustVolume(increase = true)
             val msg = if (res is ActionResult.Success) res.message else "Unable to adjust volume."
@@ -184,13 +281,13 @@ class CommandRouter(
             return RouteResult.SpokenResponse(msg)
         }
 
-        // 5. Flashlight
-        if (lower.contains("flashlight on") || lower.contains("torch on") || lower.contains("turn on flashlight") || lower.contains("turn on torch") || lower.contains("flashlight jalao") || lower.contains("torch chalu karo")) {
+        // 10. Flashlight
+        if (lower.contains("flashlight on") || lower.contains("torch on") || lower.contains("turn on flashlight") || lower.contains("turn on torch") || lower.contains("flashlight jalao") || lower.contains("torch chalu karo") || lower.contains("torch jalao")) {
             val res = deviceExecutor.toggleFlashlight(true)
             val msg = if (res is ActionResult.Success) res.message else "Flashlight is unavailable."
             return RouteResult.SpokenResponse(msg)
         }
-        if (lower.contains("flashlight off") || lower.contains("torch off") || lower.contains("turn off flashlight") || lower.contains("turn off torch") || lower.contains("flashlight band karo")) {
+        if (lower.contains("flashlight off") || lower.contains("torch off") || lower.contains("turn off flashlight") || lower.contains("turn off torch") || lower.contains("flashlight band karo") || lower.contains("torch band karo")) {
             val res = deviceExecutor.toggleFlashlight(false)
             val msg = if (res is ActionResult.Success) res.message else "Flashlight is unavailable."
             return RouteResult.SpokenResponse(msg)

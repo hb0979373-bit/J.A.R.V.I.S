@@ -40,7 +40,11 @@ data class JarvisSettings(
     val speechPitch: Float = 0.95f,
     val speechLanguage: String = "en-US",
     val aiProviderName: String = "Google Gemini",
-    val continuousListeningEnabled: Boolean = false
+    val continuousListeningEnabled: Boolean = false,
+    val wakeWordEnabled: Boolean = true,
+    val backgroundModeEnabled: Boolean = true,
+    val autoStartOnBoot: Boolean = false,
+    val primaryWakePhrase: String = "JARVIS"
 )
 
 class JarvisPreferencesRepository(private val context: Context) {
@@ -60,6 +64,10 @@ class JarvisPreferencesRepository(private val context: Context) {
         val SPEECH_LANGUAGE = stringPreferencesKey("speech_language")
         val AI_PROVIDER = stringPreferencesKey("ai_provider")
         val CONTINUOUS_LISTENING = booleanPreferencesKey("continuous_listening")
+        val WAKE_WORD_ENABLED = booleanPreferencesKey("wake_word_enabled")
+        val BACKGROUND_MODE_ENABLED = booleanPreferencesKey("background_mode_enabled")
+        val AUTO_START_ON_BOOT = booleanPreferencesKey("auto_start_on_boot")
+        val PRIMARY_WAKE_PHRASE = stringPreferencesKey("primary_wake_phrase")
     }
 
     val settingsFlow: Flow<JarvisSettings> = context.dataStore.data.map { prefs ->
@@ -77,7 +85,11 @@ class JarvisPreferencesRepository(private val context: Context) {
             speechPitch = prefs[Keys.SPEECH_PITCH] ?: 0.95f,
             speechLanguage = prefs[Keys.SPEECH_LANGUAGE] ?: "en-US",
             aiProviderName = prefs[Keys.AI_PROVIDER] ?: "Google Gemini",
-            continuousListeningEnabled = prefs[Keys.CONTINUOUS_LISTENING] ?: false
+            continuousListeningEnabled = prefs[Keys.CONTINUOUS_LISTENING] ?: false,
+            wakeWordEnabled = prefs[Keys.WAKE_WORD_ENABLED] ?: true,
+            backgroundModeEnabled = prefs[Keys.BACKGROUND_MODE_ENABLED] ?: true,
+            autoStartOnBoot = prefs[Keys.AUTO_START_ON_BOOT] ?: false,
+            primaryWakePhrase = prefs[Keys.PRIMARY_WAKE_PHRASE] ?: "JARVIS"
         )
     }
 
@@ -123,5 +135,21 @@ class JarvisPreferencesRepository(private val context: Context) {
 
     suspend fun setContinuousListening(enabled: Boolean) {
         context.dataStore.edit { it[Keys.CONTINUOUS_LISTENING] = enabled }
+    }
+
+    suspend fun setWakeWordEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.WAKE_WORD_ENABLED] = enabled }
+    }
+
+    suspend fun setBackgroundModeEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.BACKGROUND_MODE_ENABLED] = enabled }
+    }
+
+    suspend fun setAutoStartOnBoot(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.AUTO_START_ON_BOOT] = enabled }
+    }
+
+    suspend fun setPrimaryWakePhrase(phrase: String) {
+        context.dataStore.edit { it[Keys.PRIMARY_WAKE_PHRASE] = phrase }
     }
 }

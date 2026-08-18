@@ -1,6 +1,9 @@
 package com.example.ui
 
 import android.app.Application
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ai.ChatMessage
@@ -28,6 +31,7 @@ import com.example.device.access.SpecialAccessManager
 import com.example.proactive.ProactiveEngine
 import com.example.services.JarvisAccessibilityService
 import com.example.services.JarvisNotificationListenerService
+import com.example.services.JarvisVoiceService
 import com.example.ui.components.OrbState
 import com.example.voice.speech.JarvisSpeechRecognizer
 import com.example.voice.speech.SpeechState
@@ -536,6 +540,57 @@ class JarvisViewModel(application: Application) : AndroidViewModel(application) 
 
     fun openSpecialAccess(item: SpecialAccessItem): Boolean {
         return specialAccessManager.openSettingsForAccess(item)
+    }
+
+    val isWakeWordActive: StateFlow<Boolean> = JarvisVoiceService.serviceActiveState
+
+    fun toggleWakeWordService(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setWakeWordEnabled(enabled)
+            preferencesRepository.setBackgroundModeEnabled(enabled)
+            val context = getApplication<Application>()
+            if (enabled) {
+                JarvisVoiceService.startService(context)
+                _statusNotice.value = "Background Mode Active: Say 'JARVIS' anytime."
+            } else {
+                JarvisVoiceService.stopService(context)
+                _statusNotice.value = "Background Mode Deactivated."
+            }
+        }
+    }
+
+    fun setAutoStartOnBoot(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.setAutoStartOnBoot(enabled)
+        }
+    }
+
+    fun setPrimaryWakePhrase(phrase: String) {
+        viewModelScope.launch {
+            preferencesRepository.setPrimaryWakePhrase(phrase)
+        }
+    }
+
+    fun openBatteryOptimizationSettings() {
+        val context = getApplication<Application>()
+        try {
+            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${context.packageName}")
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        }
+    }
+
+    fun triggerWakeWordTest() {
+        val context = getApplication<Application>()
+        JarvisVoiceService.triggerListenNow(context)
+        _statusNotice.value = "Background Wake-Word Spotter Triggered."
     }
 
     override fun onCleared() {

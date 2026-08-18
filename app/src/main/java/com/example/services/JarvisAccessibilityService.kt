@@ -104,6 +104,26 @@ class JarvisAccessibilityService : AccessibilityService() {
         fun getScreenContext(): ScreenContextInfo? {
             return instance?.captureCurrentScreenContext()
         }
+
+        fun lockScreen(): Boolean {
+            return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                instance?.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) == true
+            } else {
+                false
+            }
+        }
+
+        fun performHome(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_HOME) == true
+        }
+
+        fun performBack(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_BACK) == true
+        }
+
+        fun performNotifications(): Boolean {
+            return instance?.performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS) == true
+        }
     }
 }
 

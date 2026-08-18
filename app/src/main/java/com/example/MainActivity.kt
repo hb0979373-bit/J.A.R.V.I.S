@@ -69,6 +69,7 @@ fun JarvisAppNavigation(viewModel: JarvisViewModel) {
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val reminders by viewModel.reminders.collectAsStateWithLifecycle()
     val history by viewModel.actionHistory.collectAsStateWithLifecycle()
+    val isWakeWordActive by viewModel.isWakeWordActive.collectAsStateWithLifecycle()
     val specialAccessItems by viewModel.specialAccessList.collectAsStateWithLifecycle()
 
     NavHost(
@@ -139,6 +140,11 @@ fun JarvisAppNavigation(viewModel: JarvisViewModel) {
         composable(JarvisRoutes.VOICE) {
             VoiceSettingsScreen(
                 settings = settings,
+                isWakeWordActive = isWakeWordActive,
+                onToggleWakeWord = { enabled -> viewModel.toggleWakeWordService(enabled) },
+                onToggleAutoStartOnBoot = { enabled -> viewModel.setAutoStartOnBoot(enabled) },
+                onOpenBatteryOptimization = { viewModel.openBatteryOptimizationSettings() },
+                onTriggerWakeWordTest = { viewModel.triggerWakeWordTest() },
                 onUpdateSpeechSettings = { speed, pitch, lang -> viewModel.updateSpeechSettings(speed, pitch, lang) },
                 onUpdateAssistantName = { name -> viewModel.updateAssistantName(name) },
                 onToggleContinuousListening = { enabled -> viewModel.setContinuousListening(enabled) },

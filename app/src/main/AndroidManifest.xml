@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     
     <!-- Special Access Permissions -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -104,6 +106,23 @@
                 <action android:name="android.app.action.DEVICE_ADMIN_DISABLED" />
             </intent-filter>
         </receiver>
+
+        <!-- J.A.R.V.I.S Boot Completed Receiver for Background Auto-Start -->
+        <receiver
+            android:name=".services.JarvisBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- J.A.R.V.I.S Foreground Voice & Wake-Word Listening Service -->
+        <service
+            android:name=".services.JarvisVoiceService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <!-- J.A.R.V.I.S Sentinel VPN Service -->
         <service

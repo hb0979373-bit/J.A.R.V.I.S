@@ -58,6 +58,8 @@ fun HudTopBar(
     proactiveMode: ProactiveMode,
     focusModeEnabled: Boolean,
     isApiKeyConfigured: Boolean,
+    isBackgroundModeActive: Boolean = true,
+    onToggleBackgroundMode: () -> Unit = {},
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -113,6 +115,37 @@ fun HudTopBar(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Background Mode Status Chip
+            Box(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isBackgroundModeActive) JarvisCyan.copy(alpha = 0.15f) else ObsidianSurface)
+                    .border(
+                        1.dp,
+                        if (isBackgroundModeActive) JarvisCyan.copy(alpha = 0.6f) else ObsidianCardBorder,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(if (isBackgroundModeActive) JarvisCyan else TextMuted)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (isBackgroundModeActive) "BG ACTIVE" else "BG OFF",
+                        color = if (isBackgroundModeActive) JarvisCyan else TextMuted,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
             if (focusModeEnabled) {
                 Box(
                     modifier = Modifier

@@ -20,6 +20,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Translate
@@ -62,6 +63,11 @@ import com.example.ui.theme.TextSecondary
 @Composable
 fun VoiceSettingsScreen(
     settings: JarvisSettings,
+    isWakeWordActive: Boolean,
+    onToggleWakeWord: (Boolean) -> Unit,
+    onToggleAutoStartOnBoot: (Boolean) -> Unit = {},
+    onOpenBatteryOptimization: () -> Unit = {},
+    onTriggerWakeWordTest: () -> Unit = {},
     onUpdateSpeechSettings: (speed: Float, pitch: Float, language: String) -> Unit,
     onUpdateAssistantName: (String) -> Unit,
     onToggleContinuousListening: (Boolean) -> Unit,
@@ -96,7 +102,7 @@ fun VoiceSettingsScreen(
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
                     Text(
-                        text = "VOICE & PERSONALIZATION",
+                        text = "VOICE & BACKGROUND MODE",
                         color = JarvisCyan,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
@@ -104,7 +110,7 @@ fun VoiceSettingsScreen(
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
-                        text = "Wake Word, Persona & Acoustic Calibration",
+                        text = "Background Sentinel, Wake Word & Speech Calibration",
                         color = TextSecondary,
                         fontSize = 12.sp
                     )
@@ -121,6 +127,116 @@ fun VoiceSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(4.dp))
+
+            // Background Mode Master Section
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(ObsidianSurface)
+                    .border(1.dp, if (settings.wakeWordEnabled) JarvisCyan else ObsidianCardBorder, RoundedCornerShape(12.dp))
+                    .padding(16.dp)
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Mic, contentDescription = null, tint = JarvisCyan, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Background Sentinel Service",
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (isWakeWordActive) "Status: ACTIVE (Listening for \"${settings.assistantName}\")" else "Status: STANDBY (Hands-free voice disabled)",
+                                    color = if (isWakeWordActive) JarvisCyan else TextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = settings.wakeWordEnabled,
+                            onCheckedChange = { onToggleWakeWord(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = PureBlack,
+                                checkedTrackColor = JarvisCyan,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = ObsidianSurfaceVariant
+                            )
+                        )
+                    }
+
+                    // Auto start on boot option
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Start on Device Boot",
+                                color = TextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Automatically activate background listening when the phone boots up.",
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.autoStartOnBoot,
+                            onCheckedChange = { onToggleAutoStartOnBoot(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = PureBlack,
+                                checkedTrackColor = JarvisCyan,
+                                uncheckedThumbColor = TextMuted,
+                                uncheckedTrackColor = ObsidianSurfaceVariant
+                            )
+                        )
+                    }
+
+                    // Background battery whitelist & test buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = onOpenBatteryOptimization,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ObsidianSurfaceVariant,
+                                contentColor = JarvisCyan
+                            ),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Battery Settings", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = onTriggerWakeWordTest,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = ObsidianSurfaceVariant,
+                                contentColor = TextPrimary
+                            ),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("Test Wake Trigger", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
 
             // Persona & Wake Word Name Selection
             Box(
