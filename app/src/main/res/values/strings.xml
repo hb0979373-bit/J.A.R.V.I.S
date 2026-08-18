@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">J.A.R.V.I.S</string>
+    <string name="accessibility_service_description">J.A.R.V.I.S Neural Screen &amp; Voice Assistance Service. Analyzes on-screen context to execute spoken directives and accessibility navigation when requested.</string>
+</resources>
